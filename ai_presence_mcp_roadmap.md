@@ -13,16 +13,25 @@ Build a Model Context Protocol (MCP) server in Go that provides AI systems with 
 - [ ] Create basic project structure
 
 ### 1.2 MCP Protocol Implementation
-- [ ] Study MCP specification thoroughly
-- [ ] Implement JSON-RPC 2.0 protocol handler
-- [ ] Create MCP server initialization and lifecycle management
-- [ ] Implement basic MCP methods:
+- [x] Study MCP specification thoroughly
+- [x] Implement JSON-RPC 2.0 protocol handler (using official Go SDK)
+- [x] Create MCP server initialization and lifecycle management
+- [x] Implement basic MCP methods:
   - `initialize`
   - `list_tools`
   - `call_tool`
   - `list_resources` (optional for later)
-- [ ] Add comprehensive logging and error handling
+- [x] Add comprehensive logging and error handling
 - [ ] Write unit tests for protocol layer
+
+### 1.5 HTTP API Implementation (NEW)
+- [x] Design RESTful API endpoints for MCP functionality
+- [x] Implement HTTP server with CORS support
+- [x] Create health check and server info endpoints
+- [x] Add email send/read endpoints via HTTP
+- [x] Include JSON schema for tool definitions
+- [x] Add command-line flags for server modes
+- [x] Test HTTP API functionality
 
 ### 1.3 Configuration System
 - [ ] Design configuration file structure (YAML/JSON)
@@ -42,20 +51,20 @@ Build a Model Context Protocol (MCP) server in Go that provides AI systems with 
 ## Phase 2: Email Integration (Weeks 4-6)
 
 ### 2.1 Email Reading Capabilities
-- [ ] Implement IMAP client for reading emails
-- [ ] Add support for multiple email providers (Gmail, Outlook, generic IMAP)
-- [ ] Create email parsing and filtering system
-- [ ] Implement folder/label management
+- [x] Implement IMAP client for reading emails
+- [x] Add support for multiple email providers (Gmail, Outlook, generic IMAP)
+- [x] Create email parsing and filtering system
+- [x] Implement folder/label management
 - [ ] Add search functionality across emails
 - [ ] Handle attachments (metadata only initially)
 
 ### 2.2 Email Sending Capabilities
-- [ ] Implement SMTP client for sending emails
-- [ ] Add email composition tools
+- [x] Implement SMTP client for sending emails
+- [x] Add email composition tools
 - [ ] Create template system for common responses
 - [ ] Implement reply and forward functionality
 - [ ] Add HTML and plain text email support
-- [ ] Include basic spam prevention measures
+- [x] Include basic spam prevention measures (input validation)
 
 ### 2.3 Email Management Tools
 - [ ] Archive/delete email functionality

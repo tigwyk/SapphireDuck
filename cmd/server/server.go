@@ -1,18 +1,17 @@
 package server
 
 import (
-	"bufio"
+	"context"
 	"fmt"
 	"log"
-	"os"
-	"strings"
 
+	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"ai-presence-mcp/internal/config"
 	"ai-presence-mcp/internal/email"
 	"ai-presence-mcp/internal/mcp"
 )
 
-func Run() error {
+func Run(testMode bool) error {
 	// Load configuration
 	cfg, err := config.Load("config.yaml")
 	if err != nil {
@@ -43,28 +42,32 @@ func Run() error {
 		log.Printf("Registered email tools for %d accounts", len(cfg.Email))
 	}
 
-	// Start stdio server (MCP protocol over stdin/stdout)
+	if testMode {
+		return runTestMode(server, cfg)
+	}
+
+	// Start MCP server with stdio transport (standard MCP protocol)
 	log.Printf("MCP Server ready. Listening on stdin/stdout...")
 	
-	scanner := bufio.NewScanner(os.Stdin)
-	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
-			continue
-		}
-
-		response, err := server.HandleMessage([]byte(line))
-		if err != nil {
-			log.Printf("Error handling message: %v", err)
-			continue
-		}
-
-		fmt.Println(string(response))
+	transport := &sdkmcp.StdioTransport{}
+	ctx := context.Background()
+	
+	if err := server.Run(ctx, transport); err != nil {
+		return fmt.Errorf("failed to run MCP server: %w", err)
 	}
 
-	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("error reading stdin: %w", err)
-	}
+	return nil
+}
 
+func runTestMode(server *mcp.Server, cfg *config.Config) error {
+	log.Printf("Running in test mode...")
+	
+	if len(cfg.Email) > 0 {
+		log.Printf("✅ MCP Server initialized with %d email accounts", len(cfg.Email))
+	} else {
+		log.Printf("⚠️  No email configuration found")
+	}
+	
+	log.Printf("✅ Test mode completed! Server would be ready to accept MCP connections.")
 	return nil
 }

@@ -1,17 +1,15 @@
 package mcp
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"log"
 
+	sdkmcp "github.com/modelcontextprotocol/go-sdk/mcp"
 	"ai-presence-mcp/pkg/types"
 )
 
-const ProtocolVersion = "2024-11-05"
-
 type Server struct {
-	tools map[string]Tool
+	mcpServer *sdkmcp.Server
 }
 
 type Tool interface {
@@ -22,117 +20,52 @@ type Tool interface {
 }
 
 func NewServer() *Server {
+	mcpServer := sdkmcp.NewServer(&sdkmcp.Implementation{
+		Name:    "ai-presence-mcp",
+		Version: "0.1.0",
+	}, nil)
+	
 	return &Server{
-		tools: make(map[string]Tool),
+		mcpServer: mcpServer,
 	}
 }
 
 func (s *Server) RegisterTool(tool Tool) {
-	s.tools[tool.Name()] = tool
-}
-
-func (s *Server) HandleMessage(data []byte) ([]byte, error) {
-	var msg types.MCPMessage
-	if err := json.Unmarshal(data, &msg); err != nil {
-		return s.errorResponse(nil, -32700, "Parse error", nil)
-	}
-
-	switch msg.Method {
-	case "initialize":
-		return s.handleInitialize(msg.ID, msg.Params)
-	case "tools/list":
-		return s.handleToolsList(msg.ID)
-	case "tools/call":
-		return s.handleToolCall(msg.ID, msg.Params)
-	default:
-		return s.errorResponse(msg.ID, -32601, "Method not found", nil)
-	}
-}
-
-func (s *Server) handleInitialize(id interface{}, params interface{}) ([]byte, error) {
-	result := types.InitializeResult{
-		ProtocolVersion: ProtocolVersion,
-		Capabilities: types.ServerCapabilities{
-			Tools: &types.ToolsCapability{},
-		},
-		ServerInfo: types.ServerInfo{
-			Name:    "AI Presence MCP Server",
-			Version: "0.1.0",
-		},
-	}
-
-	return s.successResponse(id, result)
-}
-
-func (s *Server) handleToolsList(id interface{}) ([]byte, error) {
-	var toolList []types.Tool
-	
-	for _, tool := range s.tools {
-		toolList = append(toolList, types.Tool{
-			Name:        tool.Name(),
-			Description: tool.Description(),
-			InputSchema: tool.InputSchema(),
-		})
-	}
-
-	result := map[string]interface{}{
-		"tools": toolList,
-	}
-
-	return s.successResponse(id, result)
-}
-
-func (s *Server) handleToolCall(id interface{}, params interface{}) ([]byte, error) {
-	var callParams types.ToolCallParams
-	
-	paramBytes, err := json.Marshal(params)
-	if err != nil {
-		return s.errorResponse(id, -32602, "Invalid params", nil)
+	toolDef := &sdkmcp.Tool{
+		Name:        tool.Name(),
+		Description: tool.Description(),
+		InputSchema: nil,
 	}
 	
-	if err := json.Unmarshal(paramBytes, &callParams); err != nil {
-		return s.errorResponse(id, -32602, "Invalid params", nil)
-	}
-
-	tool, exists := s.tools[callParams.Name]
-	if !exists {
-		return s.errorResponse(id, -32601, fmt.Sprintf("Tool not found: %s", callParams.Name), nil)
-	}
-
-	result, err := tool.Execute(callParams.Arguments)
-	if err != nil {
-		log.Printf("Tool execution error: %v", err)
-		isError := true
-		result = &types.ToolResult{
-			Content: []types.ToolContent{{
-				Type: "text",
-				Text: fmt.Sprintf("Error executing tool: %v", err),
-			}},
-			IsError: &isError,
+	handler := func(ctx context.Context, req *sdkmcp.CallToolRequest, rawArgs any) (*sdkmcp.CallToolResult, any, error) {
+		args := make(map[string]interface{})
+		if arguments, ok := rawArgs.(map[string]interface{}); ok {
+			args = arguments
 		}
+		
+		result, err := tool.Execute(args)
+		if err != nil {
+			return &sdkmcp.CallToolResult{
+				Content: []sdkmcp.Content{&sdkmcp.TextContent{Text: fmt.Sprintf("Error: %v", err)}},
+				IsError: true,
+			}, nil, nil
+		}
+		
+		var content []sdkmcp.Content
+		for _, c := range result.Content {
+			content = append(content, &sdkmcp.TextContent{Text: c.Text})
+		}
+		
+		isError := result.IsError != nil && *result.IsError
+		return &sdkmcp.CallToolResult{
+			Content: content,
+			IsError: isError,
+		}, nil, nil
 	}
-
-	return s.successResponse(id, result)
+	
+	sdkmcp.AddTool(s.mcpServer, toolDef, handler)
 }
 
-func (s *Server) successResponse(id interface{}, result interface{}) ([]byte, error) {
-	response := types.MCPMessage{
-		JSONRPC: "2.0",
-		ID:      id,
-		Result:  result,
-	}
-	return json.Marshal(response)
-}
-
-func (s *Server) errorResponse(id interface{}, code int, message string, data interface{}) ([]byte, error) {
-	response := types.MCPMessage{
-		JSONRPC: "2.0",
-		ID:      id,
-		Error: &types.MCPError{
-			Code:    code,
-			Message: message,
-			Data:    data,
-		},
-	}
-	return json.Marshal(response)
+func (s *Server) Run(ctx context.Context, transport sdkmcp.Transport) error {
+	return s.mcpServer.Run(ctx, transport)
 }

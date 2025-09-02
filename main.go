@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"os"
 
@@ -8,7 +9,10 @@ import (
 )
 
 func main() {
-	if err := server.Run(); err != nil {
+	testMode := flag.Bool("test", false, "Run in test mode to verify MCP server functionality")
+	flag.Parse()
+
+	if err := server.Run(*testMode); err != nil {
 		log.Printf("Server error: %v", err)
 		os.Exit(1)
 	}
