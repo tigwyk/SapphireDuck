@@ -80,3 +80,7 @@ debug.test
 # Runtime directories
 run/
 pid/
+lm-studio-config.json
+claude_desktop_config_entry.json
+claude-desktop-configs/executable-config.json
+claude-desktop-configs/go-run-config.json
