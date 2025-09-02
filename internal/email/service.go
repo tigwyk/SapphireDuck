@@ -3,13 +3,13 @@ package email
 import (
 	"crypto/tls"
 	"fmt"
-	"net/smtp"
 	"time"
 
 	"ai-presence-mcp/pkg/types"
 
 	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
+	"github.com/wneessen/go-mail"
 )
 
 type Service struct {
@@ -140,15 +140,41 @@ func (s *Service) SendEmail(to, subject, body, account string) error {
 		return err
 	}
 
-	// Setup authentication
-	auth := smtp.PlainAuth("", config.Username, config.Password, config.SMTPServer)
+	// Create a new mail message
+	m := mail.NewMsg()
+	if err := m.From(config.Username); err != nil {
+		return fmt.Errorf("failed to set sender: %w", err)
+	}
+	if err := m.To(to); err != nil {
+		return fmt.Errorf("failed to set recipient: %w", err)
+	}
+	
+	m.Subject(subject)
+	m.SetBodyString(mail.TypeTextPlain, body)
 
-	// Compose message
-	msg := fmt.Sprintf("To: %s\r\nSubject: %s\r\n\r\n%s", to, subject, body)
+	// Create SMTP client with proper configuration
+	client, err := mail.NewClient(config.SMTPServer, 
+		mail.WithPort(config.SMTPPort),
+		mail.WithSMTPAuth(mail.SMTPAuthPlain),
+		mail.WithUsername(config.Username),
+		mail.WithPassword(config.Password),
+	)
+	if err != nil {
+		return fmt.Errorf("failed to create SMTP client: %w", err)
+	}
 
-	// Send email
-	addr := fmt.Sprintf("%s:%d", config.SMTPServer, config.SMTPPort)
-	if err := smtp.SendMail(addr, auth, config.Username, []string{to}, []byte(msg)); err != nil {
+	// Configure TLS/SSL based on port
+	if config.SMTPPort == 465 {
+		// Port 465 uses implicit SSL/TLS
+		client.SetTLSPolicy(mail.TLSMandatory)
+		client.SetSSLPort(true, false)
+	} else {
+		// Port 587 and others use STARTTLS
+		client.SetTLSPolicy(mail.TLSMandatory)
+	}
+
+	// Send the email
+	if err := client.DialAndSend(m); err != nil {
 		return fmt.Errorf("failed to send email: %w", err)
 	}
 

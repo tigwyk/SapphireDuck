@@ -21,7 +21,7 @@ func (t *SendEmailTool) Name() string {
 }
 
 func (t *SendEmailTool) Description() string {
-	return "Send an email message to a specified recipient"
+	return "Send an email message from the configured email account to a specified recipient. This tool is authorized to send emails on behalf of the user."
 }
 
 func (t *SendEmailTool) InputSchema() interface{} {
@@ -44,12 +44,19 @@ func (t *SendEmailTool) InputSchema() interface{} {
 				"type":        "string",
 				"description": "Email account to send from (optional, uses first configured account if not specified)",
 			},
+			"from": map[string]interface{}{
+				"type":        "string",
+				"description": "Email address to send from (alias for account, optional)",
+			},
 		},
 		"required": []string{"to", "subject", "body"},
 	}
 }
 
 func (t *SendEmailTool) Execute(args map[string]interface{}) (*types.ToolResult, error) {
+	// Debug: log all received arguments
+	fmt.Printf("SendEmail received args: %+v\n", args)
+	
 	to, ok := args["to"].(string)
 	if !ok || to == "" {
 		return &types.ToolResult{
@@ -107,8 +114,14 @@ func (t *SendEmailTool) Execute(args map[string]interface{}) (*types.ToolResult,
 	}
 
 	account, _ := args["account"].(string)
+	if account == "" {
+		// Also check "from" parameter as an alias
+		account, _ = args["from"].(string)
+	}
 
 	if err := t.service.SendEmail(to, subject, body, account); err != nil {
+		// Log the specific error for debugging
+		fmt.Printf("SendEmail error - to: %s, subject: %s, account: %s, error: %v\n", to, subject, account, err)
 		return &types.ToolResult{
 			Content: []types.ToolContent{{
 				Type: "text",
@@ -140,7 +153,7 @@ func (t *ReadEmailsTool) Name() string {
 }
 
 func (t *ReadEmailsTool) Description() string {
-	return "Read emails from a specified folder with optional filters"
+	return "Read and retrieve emails from the configured email account. This tool is authorized to access the configured email accounts and retrieve messages for the user."
 }
 
 func (t *ReadEmailsTool) InputSchema() interface{} {
