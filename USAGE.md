@@ -1,44 +1,50 @@
-# AI Presence MCP Server - Usage Guide
+# SapphireDuck MCP Server - Usage Guide
 
 ## Overview
 
-This is an MVP implementation of the AI Presence MCP Server with email functionality. The server implements the Model Context Protocol (MCP) specification and provides email tools for AI systems.
+SapphireDuck is a Model Context Protocol (MCP) server that provides comprehensive email functionality to AI systems. The server implements the official MCP specification using the Go SDK and provides three main email tools.
 
 ## Features Implemented
 
-- ✅ MCP JSON-RPC 2.0 protocol handler
-- ✅ Email reading via IMAP
-- ✅ Email sending via SMTP
-- ✅ Basic input validation and security
-- ✅ Configuration system
-- ✅ Support for multiple email accounts
-- ✅ Gmail and generic IMAP/SMTP support
+- ✅ MCP JSON-RPC 2.0 protocol with official Go SDK
+- ✅ Email reading with metadata retrieval (IMAP)
+- ✅ Complete email content fetching (IMAP with RFC822)
+- ✅ Email sending with SSL/TLS support (SMTP)
+- ✅ Multi-provider support (Gmail, PurelyMail, generic IMAP/SMTP)
+- ✅ Robust input validation and error handling
+- ✅ YAML configuration system
+- ✅ Multiple email account support
+- ✅ Flexible parameter handling for AI model compatibility
 
 ## Quick Start
 
 ### 1. Build the Server
 
 ```bash
-go build -o ai-presence-mcp
+go build -o ai-presence-mcp.exe .
 ```
 
 ### 2. Configure Email Account
 
-Copy the example configuration:
-```bash
-cp config.example.yaml config.yaml
+Create your `config.yaml` file:
+```yaml
+email:
+  - provider: "purelymail"
+    username: "your-email@domain.com"
+    password: "your-password"
+    imap_server: "imap.purelymail.com"
+    imap_port: 993
+    smtp_server: "smtp.purelymail.com" 
+    smtp_port: 465
+    use_tls: true
 ```
 
-Edit `config.yaml` with your email credentials:
+**For Gmail**, use an App Password:
 ```yaml
-server:
-  port: 8080
-  log_level: "info"
-
 email:
   - provider: "gmail"
     username: "your-email@gmail.com"
-    password: "your-app-password"  # Use app-specific password for Gmail
+    password: "your-app-password"  # Use app-specific password
     imap_server: "imap.gmail.com"
     imap_port: 993
     smtp_server: "smtp.gmail.com"
@@ -46,7 +52,7 @@ email:
     use_tls: true
 ```
 
-**Important for Gmail**: Use an App Password instead of your regular password:
+**Gmail App Password Setup**:
 1. Enable 2-factor authentication
 2. Generate an App Password: Google Account → Security → App passwords
 3. Use the generated 16-character password
@@ -92,51 +98,67 @@ Send an email message.
 
 Read emails from a specified folder.
 
+## Available Tools
+
+### 1. `send_email`
+Send an email from a configured account.
+
+**Parameters:**
+- `to` (required): Recipient email address
+- `subject` (required): Email subject line
+- `body` (required): Email content (plain text)
+- `account` (optional): Email account to use (defaults to first configured)
+- `from` (optional): Alias for account parameter
+
+### 2. `read_emails`
+Retrieve a list of emails with metadata (does not include full body content).
+
 **Parameters:**
 - `account` (optional): Email account to read from
 - `folder` (optional): Folder name (defaults to "INBOX")
 - `limit` (optional): Maximum number of emails (defaults to 10)
 - `unread` (optional): Only show unread emails (defaults to false)
 
-**Example:**
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 2,
-  "method": "tools/call",
-  "params": {
-    "name": "read_emails",
-    "arguments": {
-      "folder": "INBOX",
-      "limit": 5,
-      "unread": true
-    }
-  }
-}
-```
+**Returns:** List with ID, from, to, subject, date, unread status, folder
+
+### 3. `get_email_content`
+Retrieve the complete content of a specific email including full body text.
+
+**Parameters:**
+- `id` OR `email_id` (required): Email UID from read_emails
+- `folder` (optional): Folder name (defaults to "INBOX")
+- `account` (optional): Email account to use
+
+**Returns:** Complete email with full body content
 
 ## Testing
 
-### Run Unit Tests
+### Test Mode
 ```bash
-go test ./...
+./ai-presence-mcp.exe -test
 ```
+This verifies configuration and tool registration without starting the MCP server.
 
-### Test MCP Protocol Manually
+### MCP Client Testing
 
-1. **Initialize the connection:**
+1. **Use with LM Studio:**
+   - Configure `lm-studio-config.json` with server path
+   - Restart LM Studio to load the MCP server
+   - Ask AI to check emails or send messages
+
+2. **Manual MCP Protocol Testing:**
 ```bash
-echo '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}}}' | ./ai-presence-mcp
-```
+# Initialize connection
+echo '{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05", "capabilities": {}}}' | ./ai-presence-mcp.exe
 
-2. **List available tools:**
-```bash
-echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/list"}' | ./ai-presence-mcp
-```
+# List available tools
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/list"}' | ./ai-presence-mcp.exe
 
-3. **Send a test email:**
-```bash
-echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "send_email", "arguments": {"to": "test@example.com", "subject": "Test", "body": "Test message"}}}' | ./ai-presence-mcp
+# Read emails
+echo '{"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "read_emails", "arguments": {"limit": 3, "unread": true}}}' | ./ai-presence-mcp.exe
+
+# Get specific email content
+echo '{"jsonrpc": "2.0", "id": 4, "method": "tools/call", "params": {"name": "get_email_content", "arguments": {"id": 12345}}}' | ./ai-presence-mcp.exe
 ```
 
 ## Security Features

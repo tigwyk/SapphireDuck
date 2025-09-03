@@ -48,32 +48,35 @@ Add this to your Claude Desktop configuration:
 ## Configuration Options
 
 ### 1. Production Mode (Recommended)
-**File:** `claude-desktop-configs/executable-config.json`
 
 ```json
 {
   "mcpServers": {
     "sapphire-duck": {
-      "command": "<path to sapphire-duck binary>",
+      "command": "G:\\GameDev\\SapphireDuck\\ai-presence-mcp.exe",
       "args": [],
-      "description": "SapphireDuck MCP Server - Production mode"
+      "env": {
+        "CONFIG_PATH": "G:\\GameDev\\SapphireDuck\\config.yaml"
+      },
+      "description": "SapphireDuck Email MCP Server"
     }
   }
 }
 ```
 
-**Pros:**
+**Features:**
 - ✅ Fast startup (pre-compiled binary)
-- ✅ Stable and reliable
-- ✅ No compilation step needed
-- ✅ Claude Desktop manages the process lifecycle
+- ✅ Stable and reliable email operations
+- ✅ Three email tools: send, list, and get content
+- ✅ Claude manages the process lifecycle
+- ✅ Supports multiple email providers
 
 **Requirements:**
-- Must build first: `go build -o sapphire-duck`
-- Update path to match your installation location
+- Build first: `go build -o ai-presence-mcp.exe .`
+- Configure `config.yaml` with your email credentials
+- Update paths to match your installation location
 
 ### 2. Development Mode
-**File:** `claude-desktop-configs/go-run-config.json`
 
 ```json
 {
@@ -114,37 +117,65 @@ Add this to your Claude Desktop configuration:
 # Test functionality
 ./sapphire-duck -test
 
-# Test MCP protocol
-python3 test-native-mcp.py
+## Testing
+
+### 1. Test Server Directly
+```bash
+# Test configuration and tool registration
+./ai-presence-mcp.exe -test
+
+# Test MCP protocol manually
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}' | ./ai-presence-mcp.exe
 ```
 
 ### 2. Test with Claude Desktop
 Try these prompts once configured:
-- "What tools do you have access to?"
-- "Check my recent emails"
-- "Send a test email to myself"
-- "List my unread emails"
+- "What email tools do you have access to?"
+- "Check my recent emails" - Uses `read_emails`
+- "Show me the full content of email ID 12345" - Uses `get_email_content`
+- "Send a test email to myself" - Uses `send_email`
+- "List only my unread emails" - Uses `read_emails` with filters
 
 ## Available Tools
 
-Once connected, Claude will have access to:
+Once connected, Claude will have access to three email tools:
 
-- **`send_email`**: Send emails to any recipient
-- **`read_emails`**: Read emails from your inbox with filtering options
+- **`send_email`**: Send emails from configured accounts
+  - Parameters: to, subject, body, account (optional)
+  - Supports multiple accounts and providers
+
+- **`read_emails`**: List emails with metadata  
+  - Parameters: account, folder, limit, unread (all optional)
+  - Returns: ID, from, to, subject, date, read status
+  - Does NOT include full email body (use get_email_content for that)
+
+- **`get_email_content`**: Get complete email content including body text
+  - Parameters: id/email_id, folder, account (folder and account optional)
+  - Returns: Complete email with full body content
+  - Use email ID from read_emails result
+
+## Email Workflow
+
+1. **List emails**: Claude calls `read_emails` to see available messages
+2. **Read content**: Claude calls `get_email_content` with specific email ID
+3. **Respond**: Claude can compose and send replies using `send_email`
 
 ## Troubleshooting
 
 ### "Failed to start MCP server"
-- **Check Path**: Ensure the `command` path is absolute and correct
-- **Check Permissions**: Make sure the executable has proper permissions
-- **Check Dependencies**: Verify `config.yaml` exists with email credentials
+- **Check Path**: Ensure the `command` path is absolute and points to `ai-presence-mcp.exe`
+- **Check Config**: Verify `CONFIG_PATH` environment variable points to valid `config.yaml`
+- **Check Build**: Ensure executable was built successfully with `go build -o ai-presence-mcp.exe .`
 
 ### "No tools available"
-- **Email Config**: Ensure `config.yaml` has valid email configuration
-- **Server Logs**: Check Claude Desktop logs for startup errors
-- **Test Mode**: Run `./sapphire-duck -test` to verify functionality
+- **Email Config**: Ensure `config.yaml` has valid email configuration section
+- **Credentials**: Verify email credentials are correct and account has IMAP/SMTP access
+- **Test Mode**: Run `./ai-presence-mcp.exe -test` to verify configuration and tool registration
 
-### "Command not found"
+### "Email operation failed"
+- **Authentication**: Check email username/password are correct
+- **Ports**: Verify IMAP/SMTP ports and TLS settings match your provider
+- **Firewall**: Ensure outbound connections to email servers are allowed
 - Use absolute paths in the configuration
 - Verify the executable exists: `ls -la /path/to/sapphire-duck`
 

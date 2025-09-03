@@ -45,37 +45,72 @@ Add this to your LM Studio MCP configuration:
 
 ## Available Tools
 
-Once connected, you'll have access to these tools:
+Once connected, you'll have access to these email tools:
 
-- **`send_email`**: Send emails to any recipient
-- **`read_emails`**: Read emails from your inbox with filtering options
+- **`send_email`**: Send emails to any recipient from configured accounts
+- **`read_emails`**: List emails with metadata (from, subject, date, ID, read status)
+- **`get_email_content`**: Retrieve complete email content including full body text
 
 ## Testing the Connection
 
-### HTTP API Test
+### Test Mode
 ```bash
-# Start server
-./scripts/start-http-server.sh
-
-# Test in another terminal
-curl http://localhost:8080/health
-curl http://localhost:8080/api/v1/tools
+# Test server configuration and tool registration
+./ai-presence-mcp.exe -test
 ```
 
 ### LM Studio Test
 Try these prompts once configured:
-- "Check my recent emails"
-- "Send a test email to myself"
-- "List my unread emails"
+- "Check my recent emails" - Uses `read_emails`
+- "Show me the full content of email ID 12345" - Uses `get_email_content`
+- "Send a test email to myself" - Uses `send_email`
+- "List my unread emails from the last week" - Uses `read_emails` with filters
+
+### Manual MCP Protocol Test
+```bash
+# List available tools
+echo '{"jsonrpc": "2.0", "id": 1, "method": "tools/list"}' | ./ai-presence-mcp.exe
+
+# Read email metadata
+echo '{"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "read_emails", "arguments": {"limit": 5}}}' | ./ai-presence-mcp.exe
+```
+
+## Email Workflow Example
+
+1. **List emails**: AI calls `read_emails` to see available messages
+2. **Get content**: AI calls `get_email_content` with email ID to read full text
+3. **Respond**: AI can draft responses using `send_email`
 
 ## Configuration Files
 
-Pre-made configurations are in `lm-studio-configs/`:
+The main configuration is in `config.yaml`:
+```yaml
+email:
+  - provider: "your-provider"
+    username: "email@domain.com"
+    password: "password"
+    imap_server: "imap.server.com"
+    imap_port: 993
+    smtp_server: "smtp.server.com"
+    smtp_port: 465
+    use_tls: true
+```
 
-- `http-server-config.json` - For HTTP mode (recommended)
-- `executable-config.json` - For direct executable mode
+LM Studio configuration is in `lm-studio-config.json`:
+```json
+{
+  "mcpServers": {
+    "ai-presence-mcp": {
+      "command": "path/to/ai-presence-mcp.exe",
+      "args": [],
+      "env": {"CONFIG_PATH": "path/to/config.yaml"},
+      "alwaysAllow": ["send_email", "read_emails", "get_email_content"]
+    }
+  }
+}
+```
 
-## Benefits of HTTP Mode
+## Benefits of Current Implementation
 
 ✅ **Easier setup** - Just a URL, no file paths  
 ✅ **Better debugging** - Can test endpoints directly  

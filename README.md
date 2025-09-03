@@ -1,53 +1,52 @@
 # AI Presence MCP Server
 
-![Build Status](https://img.shields.io/badge/build-in%20progress-yellow)
+![Build Status](https://img.shields.io/badge/build-passing-green)
 ![Go Version](https://img.shields.io/badge/go-%3E%3D1.21-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-A Model Context Protocol (MCP) server built in Go that provides AI systems with authenticated access to email, social media, and communication platforms, enabling autonomous online presence and interaction. Built using the official MCP Go SDK with native stdio transport.
+A Model Context Protocol (MCP) server built in Go that provides AI systems with authenticated email functionality. Currently focused on robust email operations with plans for expanded social media and communication platform support. Built using the official MCP Go SDK with native stdio transport.
 
-## 🚀 Features
+## 🚀 Current Features
 
-### Core Capabilities
-- **Native MCP Protocol**: Official MCP specification over stdio transport
-- **Email Integration**: Full IMAP/SMTP support for Gmail, Outlook, and generic providers  
-- **Social Media Management**: Twitter/X, LinkedIn, and extensible platform support
-- **Calendar Management**: Google Calendar, Outlook, and CalDAV integration
-- **Messaging Systems**: SMS, WhatsApp Business, Telegram, and more
-- **Secure Authentication**: OAuth 2.0, API keys, and encrypted credential storage
+### Email Integration (Fully Implemented)
+- **Send Emails**: Send emails from configured accounts with full SMTP support
+- **Read Emails**: Retrieve email lists with metadata (from, subject, date, read status)
+- **Get Email Content**: Fetch complete email content including full body text
+- **Multi-Provider Support**: Gmail, PurelyMail, and any IMAP/SMTP provider
+- **SSL/TLS Security**: Secure connections with proper encryption
+- **Multiple Accounts**: Support for multiple email accounts
 
-### Intelligence & Automation
-- **Smart Response System**: Context-aware automated responses
-- **Content Safety**: Built-in spam detection and content moderation
-- **Analytics Dashboard**: Engagement metrics and productivity insights
-- **Multi-Account Support**: Manage multiple accounts across platforms
-- **Workflow Automation**: Intelligent scheduling and task management
+### Technical Foundation
+- **Native MCP Protocol**: Official MCP specification over stdio transport using Go SDK v0.3.1
+- **JSON-RPC 2.0**: Standard protocol communication with MCP clients
+- **Robust Error Handling**: Comprehensive validation and error reporting
+- **Professional Libraries**: Uses go-mail for reliable email operations
+- **Flexible Configuration**: YAML-based configuration management
 
 ## 📋 Quick Start
 
 ### Prerequisites
 - Go 1.21 or higher
 - Git for version control
-- Valid API credentials for platforms you want to integrate
+- Email account credentials (IMAP/SMTP access)
 
 ### Installation
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/ai-presence-mcp.git
-   cd ai-presence-mcp
+   git clone https://github.com/tigwyk/SapphireDuck.git
+   cd SapphireDuck
    ```
 
-2. **Initialize the Go module**
+2. **Install dependencies**
    ```bash
-   go mod init ai-presence-mcp
    go mod tidy
    ```
 
-3. **Configure your environment**
+3. **Configure your email credentials**
    ```bash
-   cp config.example.yaml config.yaml
-   # Edit config.yaml with your credentials
+   cp config.yaml.example config.yaml
+   # Edit config.yaml with your email credentials
    ```
 
 4. **Build and run**
@@ -230,24 +229,37 @@ curl "http://localhost:8080/api/v1/email/read?limit=5"
 
 ### Available Tools
 
-| Tool | Description | Platform |
-|------|-------------|----------|
-| `send_email` | Send an email message | Email |
-| `read_emails` | Retrieve emails with filters | Email |
-| `schedule_event` | Create calendar event | Calendar |
-| `post_tweet` | Post a tweet | Twitter/X |
-| `send_linkedin_post` | Post to LinkedIn | LinkedIn |
-| `send_sms` | Send SMS message | SMS |
+| Tool | Description | Status | Platform |
+|------|-------------|--------|----------|
+| `send_email` | Send an email message | ✅ Implemented | Email |
+| `read_emails` | Retrieve emails with metadata (list view) | ✅ Implemented | Email |
+| `get_email_content` | Get complete content of a specific email | ✅ Implemented | Email |
+| `schedule_event` | Create calendar event | 🚧 Planned | Calendar |
+| `post_tweet` | Post a tweet | 🚧 Planned | Twitter/X |
+| `send_linkedin_post` | Post to LinkedIn | 🚧 Planned | LinkedIn |
+| `send_sms` | Send SMS message | 🚧 Planned | SMS |
 
-## 🏗️ Architecture
+## 🏗️ Current Architecture
 
 ```
 ┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   MCP Client    │    │   MCP Server     │    │   Platforms     │
-│   (AI System)  │◄──►│  (This Project)  │◄──►│   (APIs)        │
+│   MCP Client    │    │   MCP Server     │    │ Email Provider  │
+│ (LM Studio/AI)  │◄──►│  (SapphireDuck)  │◄──►│ (IMAP/SMTP)     │
 └─────────────────┘    └──────────────────┘    └─────────────────┘
                               │
                               ▼
+                       ┌──────────────────┐
+                       │   Configuration   │
+                       │   (config.yaml)   │
+                       └──────────────────┘
+```
+
+### Current Components
+
+- **MCP Protocol Handler**: JSON-RPC 2.0 implementation using official Go SDK
+- **Email Service**: IMAP/SMTP operations using go-mail library
+- **Configuration Manager**: YAML-based email account management
+- **Tool System**: MCP tool interface for email operations
                        ┌──────────────────┐
                        │   Configuration   │
                        │   & Credentials   │

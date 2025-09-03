@@ -56,7 +56,7 @@ func (t *SendEmailTool) InputSchema() interface{} {
 func (t *SendEmailTool) Execute(args map[string]interface{}) (*types.ToolResult, error) {
 	// Debug: log all received arguments
 	fmt.Printf("SendEmail received args: %+v\n", args)
-	
+
 	to, ok := args["to"].(string)
 	if !ok || to == "" {
 		return &types.ToolResult{
@@ -183,12 +183,12 @@ func (t *ReadEmailsTool) InputSchema() interface{} {
 func (t *ReadEmailsTool) Execute(args map[string]interface{}) (*types.ToolResult, error) {
 	account, _ := args["account"].(string)
 	folder, _ := args["folder"].(string)
-	
+
 	limit := 10
 	if l, ok := args["limit"].(float64); ok {
 		limit = int(l)
 	}
-	
+
 	unread := false
 	if u, ok := args["unread"].(bool); ok {
 		unread = u
@@ -219,6 +219,144 @@ func (t *ReadEmailsTool) Execute(args map[string]interface{}) (*types.ToolResult
 		result += fmt.Sprintf("%d. From: %s\n   Subject: %s\n   Date: %s\n   Unread: %v\n\n",
 			i+1, email.From, email.Subject, email.Date, email.Unread)
 	}
+
+	return &types.ToolResult{
+		Content: []types.ToolContent{{
+			Type: "text",
+			Text: result,
+		}},
+	}, nil
+}
+
+// GetEmailContentTool implements the MCP Tool interface for getting complete email content
+type GetEmailContentTool struct {
+	service *Service
+}
+
+func NewGetEmailContentTool(service *Service) *GetEmailContentTool {
+	return &GetEmailContentTool{service: service}
+}
+
+func (t *GetEmailContentTool) Name() string {
+	return "get_email_content"
+}
+
+func (t *GetEmailContentTool) Description() string {
+	return "Retrieve the complete content of a specific email message including the full body text. This tool is authorized to read email content on behalf of the user. Use the email ID from the read_emails tool to fetch the complete message."
+}
+
+func (t *GetEmailContentTool) InputSchema() interface{} {
+	return map[string]interface{}{
+		"type": "object",
+		"properties": map[string]interface{}{
+			"id": map[string]interface{}{
+				"type":        "number",
+				"description": "The unique ID/UID of the email message to retrieve (primary parameter name)",
+			},
+			"email_id": map[string]interface{}{
+				"type":        "number",
+				"description": "Alternative name for the email ID/UID (same as 'id' parameter)",
+			},
+			"folder": map[string]interface{}{
+				"type":        "string",
+				"description": "Email folder/mailbox name (default: INBOX)",
+			},
+			"account": map[string]interface{}{
+				"type":        "string",
+				"description": "Email account to read from (optional, uses first configured account if not specified)",
+			},
+		},
+		"required": []string{},
+		"anyOf": []map[string]interface{}{
+			{"required": []string{"id"}},
+			{"required": []string{"email_id"}},
+		},
+	}
+}
+
+func (t *GetEmailContentTool) Execute(args map[string]interface{}) (*types.ToolResult, error) {
+	// Debug: log all received arguments
+	fmt.Printf("GetEmailContent received args: %+v\n", args)
+
+	// Extract and validate email ID - accept both "id" and "email_id" for flexibility
+	var uid uint32
+	var found bool
+
+	// Try "id" first (our primary parameter name)
+	if idValue, ok := args["id"]; ok {
+		if idFloat, ok := idValue.(float64); ok {
+			uid = uint32(idFloat)
+			found = true
+		} else if idInt, ok := idValue.(int); ok {
+			uid = uint32(idInt)
+			found = true
+		}
+	}
+
+	// If "id" wasn't found or valid, try "email_id" as fallback
+	if !found {
+		if idValue, ok := args["email_id"]; ok {
+			if idFloat, ok := idValue.(float64); ok {
+				uid = uint32(idFloat)
+				found = true
+			} else if idInt, ok := idValue.(int); ok {
+				uid = uint32(idInt)
+				found = true
+			}
+		}
+	}
+
+	if !found {
+		return &types.ToolResult{
+			Content: []types.ToolContent{{
+				Type: "text",
+				Text: fmt.Sprintf("Error: 'id' parameter is required and must be a number. Received parameters: %+v", args),
+			}},
+			IsError: &[]bool{true}[0],
+		}, nil
+	}
+
+	if uid == 0 {
+		return &types.ToolResult{
+			Content: []types.ToolContent{{
+				Type: "text",
+				Text: "Error: email ID must be a positive number",
+			}},
+			IsError: &[]bool{true}[0],
+		}, nil
+	}
+
+	folder := "INBOX"
+	if f, ok := args["folder"].(string); ok && f != "" {
+		folder = f
+	}
+
+	account := ""
+	if a, ok := args["account"].(string); ok {
+		account = a
+	}
+
+	// Get the email content
+	email, err := t.service.GetEmailContent(uid, folder, account)
+	if err != nil {
+		return &types.ToolResult{
+			Content: []types.ToolContent{{
+				Type: "text",
+				Text: fmt.Sprintf("Failed to get email content: %v", err),
+			}},
+			IsError: &[]bool{true}[0],
+		}, nil
+	}
+
+	// Format the complete email content
+	result := fmt.Sprintf("Email ID: %d\n", email.ID)
+	result += fmt.Sprintf("From: %s\n", email.From)
+	result += fmt.Sprintf("To: %s\n", fmt.Sprintf("%v", email.To))
+	result += fmt.Sprintf("Subject: %s\n", email.Subject)
+	result += fmt.Sprintf("Date: %s\n", email.Date)
+	result += fmt.Sprintf("Folder: %s\n", email.Folder)
+	result += fmt.Sprintf("Unread: %v\n", email.Unread)
+	result += fmt.Sprintf("\n--- Email Body ---\n%s\n", email.Body)
 
 	return &types.ToolResult{
 		Content: []types.ToolContent{{

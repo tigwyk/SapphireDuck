@@ -46,9 +46,11 @@ func Run(testMode bool) error {
 
 		sendEmailTool := email.NewSendEmailTool(emailService)
 		readEmailsTool := email.NewReadEmailsTool(emailService)
+		getEmailContentTool := email.NewGetEmailContentTool(emailService)
 
 		server.RegisterTool(sendEmailTool)
 		server.RegisterTool(readEmailsTool)
+		server.RegisterTool(getEmailContentTool)
 
 		log.Printf("Registered email tools for %d accounts", len(cfg.Email))
 	}
